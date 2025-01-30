@@ -55,6 +55,31 @@ def getProducts():
         return jsonify(productos)
     except Exception as e:
         return jsonify({"error": str(e)}), 500  
-         
+
+@app.route('/add-products', methods=['POST'])
+def insertar_producto():
+    data = request.json
+    if not all(k in data for k in ("name", "price", "stock", "description")):
+        return jsonify({"error": "Faltan datos"}), 400
+
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+
+        query = "INSERT INTO productos (name, price, stock, description) VALUES (%s, %s, %s, %s)"
+        values = (data["name"], data["price"], data["stock"], data["description"])
+
+        cursor.execute(query, values)
+        conn.commit()
+
+        return jsonify({"message": "Producto insertado correctamente", "id": cursor.lastrowid}), 201
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()      
+
 if __name__ == "__main__":
     app.run(port=5000, host='0.0.0.0')

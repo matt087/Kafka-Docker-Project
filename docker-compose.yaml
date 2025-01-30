@@ -50,6 +50,8 @@ services:
       - db_productos
     environment:
       KAFKA_BROKER: kafka:9092
+    volumes:
+    - ./servicio_productos:/app
     networks:
       - red_empresa
     restart: on-failure
@@ -74,6 +76,8 @@ services:
       - db_pedidos
     environment:
       KAFKA_BROKER: kafka:9092
+    volumes:
+    - ./servicio_pedidos:/app
     networks:
       - red_empresa
     restart: on-failure 
@@ -98,18 +102,20 @@ services:
       - db_usuarios
     environment:
       KAFKA_BROKER: kafka:9092
+    volumes:
+    - ./servicio_usuarios:/app
     networks:
       - red_empresa
     restart: on-failure 
     container_name: servicio-usuarios      
 
-volumes:
-  productos_data:
-  pedidos_data:
-  usuarios_data:
-
 networks:
   red_empresa:
     driver: bridge
+
+volumes:
+  usuarios_data:
+  pedidos_data:
+  productos_data:
 
 
