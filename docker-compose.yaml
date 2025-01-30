@@ -1,0 +1,115 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper
+    networks:
+      - red_empresa
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    container_name: zookeeper
+
+  kafka:
+    image: confluentinc/cp-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    networks:
+      - red_empresa
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL: PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENER_NAME: PLAINTEXT
+      KAFKA_LISTENER_PORT: 9092
+      KAFKA_LISTENER_INTERNAL: PLAINTEXT://0.0.0.0:9092
+      KAFKA_LISTENER_EXTERNAL: PLAINTEXT://kafka:9092
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_NAME_INTERNAL: PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    container_name: kafka
+  
+  db_productos:
+    build: ./db_productos/.
+    container_name: db_productos
+    ports:
+      - "3306:3306"
+    volumes:
+      - productos_data:/var/lib/mysql
+    networks:
+      - red_empresa
+    
+
+  servicio-productos:
+    build: ./servicio_productos/.
+    ports:
+      - "5001:5000"
+    depends_on:
+      - kafka
+      - db_productos
+    environment:
+      KAFKA_BROKER: kafka:9092
+    networks:
+      - red_empresa
+    restart: on-failure
+    container_name: servicio-productos   
+  
+  db_pedidos:
+    build: ./db_pedidos/.
+    container_name: db_pedidos
+    ports:
+      - "3307:3306"
+    volumes:
+      - pedidos_data:/var/lib/mysql
+    networks:
+      - red_empresa
+    
+  servicio-pedidos:
+    build: ./servicio_pedidos/.
+    ports:
+      - "5002:5000"
+    depends_on:
+      - kafka
+      - db_pedidos
+    environment:
+      KAFKA_BROKER: kafka:9092
+    networks:
+      - red_empresa
+    restart: on-failure 
+    container_name: servicio-pedidos   
+
+  db_usuarios:
+    build: ./db_usuarios/.
+    container_name: db_usuarios
+    ports:
+      - "3308:3306"
+    volumes:
+      - usuarios_data:/var/lib/mysql
+    networks:
+      - red_empresa
+
+  servicio-usuarios:
+    build: ./servicio_usuarios/.
+    ports:
+      - "5003:5000"
+    depends_on:
+      - kafka
+      - db_usuarios
+    environment:
+      KAFKA_BROKER: kafka:9092
+    networks:
+      - red_empresa
+    restart: on-failure 
+    container_name: servicio-usuarios      
+
+volumes:
+  productos_data:
+  pedidos_data:
+  usuarios_data:
+
+networks:
+  red_empresa:
+    driver: bridge
+
+
