@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper
@@ -29,7 +31,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     container_name: kafka
-  
+
   db_productos:
     build: ./db_productos/.
     container_name: db_productos
@@ -39,7 +41,6 @@ services:
       - productos_data:/var/lib/mysql
     networks:
       - red_empresa
-    
 
   servicio-productos:
     build: ./servicio_productos/.
@@ -51,12 +52,12 @@ services:
     environment:
       KAFKA_BROKER: kafka:9092
     volumes:
-    - ./servicio_productos:/app
+      - ./servicio_productos:/app
     networks:
       - red_empresa
     restart: on-failure
-    container_name: servicio-productos   
-  
+    container_name: servicio-productos
+
   db_pedidos:
     build: ./db_pedidos/.
     container_name: db_pedidos
@@ -66,7 +67,7 @@ services:
       - pedidos_data:/var/lib/mysql
     networks:
       - red_empresa
-    
+
   servicio-pedidos:
     build: ./servicio_pedidos/.
     ports:
@@ -77,11 +78,11 @@ services:
     environment:
       KAFKA_BROKER: kafka:9092
     volumes:
-    - ./servicio_pedidos:/app
+      - ./servicio_pedidos:/app
     networks:
       - red_empresa
-    restart: on-failure 
-    container_name: servicio-pedidos   
+    restart: on-failure
+    container_name: servicio-pedidos
 
   db_usuarios:
     build: ./db_usuarios/.
@@ -103,11 +104,24 @@ services:
     environment:
       KAFKA_BROKER: kafka:9092
     volumes:
-    - ./servicio_usuarios:/app
+      - ./servicio_usuarios:/app
     networks:
       - red_empresa
-    restart: on-failure 
-    container_name: servicio-usuarios      
+    restart: on-failure
+    container_name: servicio-usuarios
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    depends_on:
+      - kafka
+    networks:
+      - red_empresa
 
 networks:
   red_empresa:
@@ -117,5 +131,3 @@ volumes:
   usuarios_data:
   pedidos_data:
   productos_data:
-
-

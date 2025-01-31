@@ -22,26 +22,91 @@ producer = KafkaProducer(
 )
 
 consumer = KafkaConsumer(
-    'availability-response',
+    'availability-request',
+    'update-products-request',
     bootstrap_servers='kafka:9092',
-    group_id='booking-service',
+    group_id='servicio-productos',
     value_deserializer=lambda v: json.loads(v.decode('utf-8')),
     auto_offset_reset='earliest' 
 )
-
-pending_responses = {}
 
 def consume_requests():
     for message in consumer: 
         response = message.value
         correlation_id = response.get('correlation_id')
-        if message.topic == 'room-id-request':
-            print("a")
-        elif message.topic == 'availability-response':
-                correlation_id = response.get("correlation_id")
-                pending_responses[correlation_id] = response
+        productos = response.get('producto_id', [])
+        cantidades = response.get('cantidad', [])
+        if message.topic == 'availability-request':
+            valid = True
+            for i in range (len(productos)):
+                valid = valid and verificar_stock(int(productos[i]), int(cantidades[i]))
+                if not valid:
+                    break
+            producer.send('availability-response', value = {"correlation_id":correlation_id,
+                                                        "valid":valid})
+        elif message.topic == 'update-products-request':
+            done = True
+            for i in range (len(productos)):
+                done = done and actualizar_stock(int(productos[i]), int(cantidades[i]))
+                if not done:
+                    break
+            producer.send('update-products-response', value = {"correlation_id":correlation_id,
+                                                        "done":done})
+                
+                
 
 threading.Thread(target=consume_requests, daemon=True).start()
+
+def verificar_stock(producto_id, cantidad):
+    try:
+        conexion = mysql.connector.connect(**db_config)
+        cursor = conexion.cursor()
+        consulta = "SELECT stock FROM productos WHERE id = %s"
+        cursor.execute(consulta, (producto_id,))
+        resultado = cursor.fetchone()
+        if resultado:
+            stock = resultado[0]  
+            if cantidad <= stock:
+                return True
+            else:
+                return False
+        else:
+            return False
+    except mysql.connector.Error as error:
+        print(f"Error al conectarse a la base de datos: {error}")
+        return False
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conexion' in locals() and conexion.is_connected():
+            conexion.close()
+
+def actualizar_stock(producto_id, cantidad_a_restar):
+    try:
+        conexion = mysql.connector.connect(**db_config)
+        cursor = conexion.cursor()
+        consulta_stock = "SELECT stock FROM productos WHERE id = %s"
+        cursor.execute(consulta_stock, (producto_id,))
+        resultado = cursor.fetchone()
+        if resultado:
+            stock_actual = resultado[0]  
+            if stock_actual >= cantidad_a_restar:
+                nuevo_stock = stock_actual - cantidad_a_restar
+                consulta_update = "UPDATE productos SET stock = %s WHERE id = %s"
+                cursor.execute(consulta_update, (nuevo_stock, producto_id))
+                conexion.commit()
+                return True
+            else:
+                return False
+        else:
+            return False
+    except mysql.connector.Error as error:
+        return False
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conexion' in locals() and conexion.is_connected():
+            conexion.close()
 
 @app.route('/list-products', methods=['GET'])
 def getProducts():

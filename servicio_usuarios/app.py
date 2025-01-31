@@ -24,7 +24,7 @@ producer = KafkaProducer(
 consumer = KafkaConsumer(
     'availability-response',
     bootstrap_servers='kafka:9092',
-    group_id='booking-service',
+    group_id='servicio-usuarios',
     value_deserializer=lambda v: json.loads(v.decode('utf-8')),
     auto_offset_reset='earliest' 
 )
